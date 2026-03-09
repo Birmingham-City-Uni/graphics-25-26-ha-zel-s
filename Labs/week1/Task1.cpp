@@ -1,6 +1,14 @@
 #include <iostream>
 #include <lodepng.h>
 
+void setPixel(std::vector<uint8_t>& imageBuffer, int width, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	int nChannels = 4;
+	int pixelIdx = x + y * width;
+	imageBuffer[pixelIdx * nChannels + 0] = r; // red pixel value
+	imageBuffer[pixelIdx * nChannels + 1] = g; // green pixel value
+	imageBuffer[pixelIdx * nChannels + 2] = b; // blue pixel value
+	imageBuffer[pixelIdx * nChannels + 3] = a; // alpha pixel value
+}
 
 int main()
 {
@@ -15,16 +23,24 @@ int main()
 	// Remember 8-bit unsigned values can range from 0 to 255.
 	std::vector<uint8_t> imageBuffer(height*width*nChannels);
 
-	// This for loop sets all the pixels of the image to a cyan colour. 
-	for(int y = 0; y < height; ++y) 
+	for(int y = 0; y < height/3; ++y) 
 		for (int x = 0; x < width; ++x) {
-			int pixelIdx = x + y * width;
-			imageBuffer[pixelIdx * nChannels + 0] = 0; // Set red pixel values to 0
-			imageBuffer[pixelIdx * nChannels + 1] = 255; // Set green pixel values to 255 (full brightness)
-			imageBuffer[pixelIdx * nChannels + 2] = 255; // Set blue pixel values to 255 (full brightness)
-			imageBuffer[pixelIdx * nChannels + 3] = 255; // Set alpha (transparency) pixel values to 255 (fully opaque)
+			setPixel(imageBuffer, width, x, y, 249, 148, 30, 255); //orange
 		}
-
+	for(int y = height/3; y < (height * 2) / 3; ++y) 
+		for (int x = 0; x < width; ++x) {
+			setPixel(imageBuffer, width, x, y, 254, 253, 251, 255); //white
+		}
+	for (int y = (height * 2) / 3; y < height; ++y)
+		for (int x = 0; x < width; ++x) {
+			setPixel(imageBuffer, width, x, y, 37, 134, 37, 255); //green
+		}
+	for(int x = 0; x < width; ++x) // circle
+		for (int y = 0; y < height; ++y) {
+			if (sqrt((x - width / 2)*(x - width / 2) + (y - height / 2)*(y - height / 2)) < 150) {
+				setPixel(imageBuffer, width, x, y, 26, 24, 131, 255); //blue
+			}
+		}
 	/// *** Lab Tasks ***
 	// * Task 1: Try adapting the code above to set the lower half of the image to be a green colour.
 	// * Task 2: Doing the maths above to work out indices is a bit annoying! Write your own setPixel function.
@@ -47,6 +63,7 @@ int main()
 	//           Try setting the pixels to random values (use rand() and the % operator). What is the 
 	//           compression ratio now, and why do you think this is?
 
+	// compression ratio = size of uncompressed image / size of compressed image = 8,294,400 bytes / 3,126 bytes = 2653:1 
 
 	// *** Encoding image data ***
 	// PNG files are compressed to save storage space. 
