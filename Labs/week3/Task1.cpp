@@ -31,21 +31,41 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 	// Find a bounding box around the triangle
 	// (that is, find minX, minY and maxX, maxY that are the min and max x and y-coordinates present in the triangle)
 	// You can use the std::min and std::max functions if you wish.
-	
-	// YOUR CODE HERE
-	int minX = 0, minY = 0, maxX = 0, maxY = 0;
+
+	int minX = (int)p0.x(), minY = (int)p0.y(), maxX = (int)p0.x(), maxY = (int)p0.y();
+
+	//compare with first vertex
+	if (p0.x() < minX) minX = (int)p0.x();
+	if (p0.y() < minY) minY = (int)p0.y();
+	if (p0.x() > maxX) maxX = (int)p0.x();
+	if (p0.y() > maxY) maxY = (int)p0.y();
+
+	//compare with second vertex
+	if (p1.x() < minX) minX = (int)p1.x();
+	if (p1.y() < minY) minY = (int)p1.y();
+	if (p1.x() > maxX) maxX = (int)p1.x();
+	if (p1.y() > maxY) maxY = (int)p1.y();
+
+	//compare with third vertex
+	if (p2.x() < minX) minX = (int)p2.x();
+	if (p2.y() < minY) minY = (int)p2.y();
+	if (p2.x() > maxX) maxX = (int)p2.x();
+	if (p2.y() > maxY) maxY = (int)p2.y();
 
 	// Check your minX, minY, maxX and maxY values don't lie outside the image!
 	// This would cause errors if you attempt to draw there.
 	// That is, clamp these values so that 0 <= x < width and 0 <= y < height.
 
-	// YOUR CODE HERE
+	if (minX < 0) minX = 0;
+	if (minY < 0) minY = 0;
+	if (maxX >= width) maxX = width - 1;
+	if (maxY >= height) maxY = height - 1;
 
 	// Find vectors going along two edges of the triangle
 	// from p0 to p1, and from p1 to p2.
 
-	// YOUR CODE HERE
-	Vector2 edge1, edge2;
+	Vector2 edge1 = p1 - p0;
+	Vector2 edge2 = p2 - p1;
 
 	// Find the area of the triangle using a cross product.
 	// Optional: You can use the sign of the cross product to see if this triangle is facing towards
@@ -53,8 +73,8 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 	// the quality of your render. (Note this optional feature is backface culling, one of the requirements
 	// for your coursework!)
 
-	// YOUR CODE HERE
-	float triangleArea = 0.0f;
+	float triangleArea = (p1 - p0).cross(p2 - p0);
+	if (triangleArea <= 0) return; // backface culling to skip triangles facing away from the camera
 
 	// Now let's actually draw the triangle!
 	// We'll do a for loop over all pixels in the bounding box.
@@ -66,22 +86,20 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 			Vector2 p(x, y); // This is the 2D location of the pixel we are drawing.
 
 			// Find the area of each of the three sub-triangles, using a cross product
-			// YOUR CODE HERE - set the value of these three area variables.
-			float a0;
-			float a1;
-			float a2;
+			float a0 = (p1 - p).cross(p2 - p);
+			float a1 = (p2 - p).cross(p0 - p);
+			float a2 = (p0 - p).cross(p1 - p);
 
 			// Find the barycentrics b0, b1, and b2 by dividing by triangle area.
-			// YOUR CODE HERE - do the division and find b0, b1, b2.
-			float b0;
-			float b1;
-			float b2;
+			float b0 = a0 / triangleArea;
+			float b1 = a1 / triangleArea;
+			float b2 = a2 / triangleArea;
 
 			// Check if the sum of b0, b1, b2 is bigger than 1 (or ideally a number just over 1 
 			// to account for numerical error).
 			// If it's bigger, skip to the next pixel as we are outside the triangle.
-			// YOUR CODE HERE
-			float sum;
+			float sum = b0 + b1 + b2;
+			if (sum > 1.0f) continue;
 
 			// Now we're sure we're inside the triangle, and we can draw this pixel!
 			setPixel(image, x, y, width, height, r, g, b, a);
@@ -143,7 +161,6 @@ int main()
 
 		// Task 3: Draw the bunny!
 		// Now you've finished your triangle drawing function, you'll see a red bunny, drawn using the code below:
-		drawTriangle(imageBuffer, width, height, p0, p1, p2, 255, 0, 0, 255);
 
 		// This is a bit boring. Try replacing this code to draw two different bunny types.
 
@@ -152,6 +169,12 @@ int main()
 		// the rand() function in C++.
 		// Hint: Remember rand() returns an int, but we want our colour values to lie between 0 and 255.
 		// How can we make sure our random r, g, b values stick to the right range?
+
+		uint8_t r = rand() % 256; // random values between 0 and 255
+		uint8_t g = rand() % 256;
+		uint8_t b = rand() % 256;
+
+		// drawTriangle(imageBuffer, width, height, p0, p1, p2, 255, 0, 0, 255);
 
 		// Bunny 2: (Sort of) Diffuse Lighting Bunny
 		// For the final task we'll do a bit of a preview of session 5 on diffuse lighting.
@@ -163,6 +186,15 @@ int main()
 		// Once you have your normal, take the dot product with (0,0,1). This will effectively measure how much
 		// the normal points down the positive z-axis.
 		// Use this value to set the brightness of the triangle (remember to scale it back to the [0,255] range).
+
+		Vector3 v0 = vertices[face[1]] - vertices[face[0]];
+		Vector3 v1 = vertices[face[2]] - vertices[face[0]];
+		Vector3 normal = v0.cross(v1).normalized();
+
+		float intensity = normal.dot(Vector3(0, 0, 1));
+
+		uint8_t brightness = (uint8_t)(std::max(0.0f, intensity) * 255);
+		drawTriangle(imageBuffer, width, height, p0, p1, p2, brightness, brightness, brightness, 255);
 	}
 
 
