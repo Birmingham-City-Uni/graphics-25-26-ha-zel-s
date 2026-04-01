@@ -39,16 +39,18 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 	maxX = std::max(std::max(t.screen[0].x(), t.screen[1].x()), t.screen[2].x());
 	maxY = std::max(std::max(t.screen[0].y(), t.screen[1].y()), t.screen[2].y());
 
-	// Constrain it to lie within the image.
-	minX = std::min(std::max(minX, 0), width);
-	maxX = std::min(std::max(maxX, 0), width);
-	minY = std::min(std::max(minY, 0), height);
-	maxY = std::min(std::max(maxY, 0), height);
+	// Constrain it to lie within the image. clamp to [0, width-1] and [0, height-1]
+	minX = std::max(minX, 0);
+	maxX = std::min(maxX, width - 1);
+	minY = std::max(minY, 0);
+	maxY = std::min(maxY, height - 1);
 
 	Eigen::Vector2f edge1 = t.screen[2] - t.screen[0];
 	Eigen::Vector2f edge2 = t.screen[1] - t.screen[0];
-	float triangleArea = 0.5f * vec2Cross(edge2, edge1);
-	if (triangleArea < 0) {
+	// Use absolute area so inconsistent vertex winding won't cull all triangles.
+	// Treat near-zero area as degenerate and skip those triangles.
+	float triangleArea = 0.5f * fabsf(vec2Cross(edge2, edge1));
+	if (triangleArea < 1e-6f) {
 		// Triangle is backfacing
 		// Exit and quit drawing!
 		return;
@@ -80,8 +82,9 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 			// Work out the world-space position and normal at this point on the triangle.
 			// You can work this out using t.verts, t.norms and the barycentric coordinates.
 			// HINT: Don't forget to re-normalise your norm afterwards!
-			Eigen::Vector3f worldP = Eigen::Vector3f::Zero();
-			Eigen::Vector3f normP = Eigen::Vector3f::Zero();
+			Eigen::Vector3f worldP = (b0 * t.verts[0] + b1 * t.verts[1] + b2 * t.verts[2]);
+			Eigen::Vector3f normP = (b0 * t.norms[0] + b1 * t.norms[1] + b2 * t.norms[2]);
+			normP.normalize();
 			// *** END YOUR CODE ***
 
 			// Work out colour at this position.
@@ -97,26 +100,24 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 				// Work out the intensity of this light source, at the point worldP.
 				Eigen::Vector3f lightIntensity = Eigen::Vector3f::Zero();
 
-				// We only need to do the following if the light isn't an ambient light.
-				if (light->getType() != Light::Type::AMBIENT) {
-
-					// Take the dot product of the normal with the light direction.
-					// Be careful - the getDirection function returns the direction from
-					// the light source to the surface.
-					// You want the vector from the surface outward, so *negate* this vector
-					// (i.e. use -direction, rather than direction).
-					float dotProd = 0.0f;
-
-					// We don't want negative light - if your dot product was less than 0, set it to 0.
-
-					// Multiply the light intensity by the dot product.
+				// If this is an ambient light, add intensity * albedo to the color, and continue to the next light.
+				if (light->getType() == Light::Type::AMBIENT) {
+					color += coeffWiseMultiply(lightIntensity, albedo);
+					continue;
 				}
+
+				// For other light types, we need to find the direction of the incoming light at worldP.
+				Eigen::Vector3f lightDir = light->getDirection(worldP);
 
 				// Now add the intensity times the albedo.
 				// You need to use a coefficient-wise multiply (not matrix multiply, dot product or cross product!)
-				// There's a handy coeffWiseMultiply function I've written for you in LinAlg.hpp for this.
 
-				// *** END YOUR CODE ***
+				lightIntensity = light->getIntensityAt(worldP);
+				if (light->getType() != Light::Type::AMBIENT) {
+					float dotProd = std::max(0.0f, normP.dot(-lightDir));
+					lightIntensity *= dotProd;
+				}
+				color += coeffWiseMultiply(lightIntensity, albedo);
 			}
 
 			Color c;
@@ -204,9 +205,12 @@ int main()
 	// add some of these too!
 
 	// *** YOUR CODE HERE ***
-	//lights.emplace_back(new PointLight(Eigen::Vector3f(1.1f, 1.1f, 1.1f), Eigen::Vector3f(0.f, 1.0f, 0.f)));
+	// Use a directional light + a white point light placed slightly above center.
 	lights.emplace_back(new DirectionalLight(Eigen::Vector3f(0.4f, 0.4f, 0.4f), Eigen::Vector3f(1.f, 0.f, 0.0f)));
-	//lights.emplace_back(new SpotLight(Eigen::Vector3f(10.0f, 0.0f, 0.0f), Eigen::Vector3f(0.f, 1.f, 0.0f), Eigen::Vector3f(0, -1, 0), M_PI/8));
+	// Move the point light slightly forward/up so its debug marker isn't overlapping model centers.
+	lights.emplace_back(new PointLight(Eigen::Vector3f(1.0f, 1.0f, 1.0f), Eigen::Vector3f(0.f, 1.2f, 0.5f)));
+	// Optional: a subtle red spot light; reduce intensity so it doesn't saturate.
+	lights.emplace_back(new SpotLight(Eigen::Vector3f(1.0f, 0.2f, 0.2f), Eigen::Vector3f(0.f, 1.2f, 0.5f), Eigen::Vector3f(0, -1, -0.2), M_PI/10));
 	// *** END YOUR CODE ***
 
 
@@ -215,17 +219,21 @@ int main()
 	Mesh dragonMesh = loadMeshFile(dragonFilename);
 
 
-	Eigen::Matrix4f bunnyTransform = translationMatrix(Eigen::Vector3f(-0.5f, -0.5f, 0.f)) * rotateYMatrix(M_PI);
+	// Reduce world scale and move models slightly closer to center
+	Eigen::Matrix4f bunnyTransform = translationMatrix(Eigen::Vector3f(-0.6f, -0.4f, 0.f))
+                                     * rotateYMatrix(M_PI)
+                                     * scaleMatrix(0.9f);
 
-	Eigen::Matrix4f dragonTransform =
-		translationMatrix(Eigen::Vector3f(0.3f, 0.1f, 0.0f))
-		* scaleMatrix(1.2f) * rotateYMatrix(M_PI);
+	Eigen::Matrix4f dragonTransform = translationMatrix(Eigen::Vector3f(0.6f, -0.2f, 0.0f))
+                                      * rotateYMatrix(M_PI)
+									  * scaleMatrix(0.8f);
 
 	drawMesh(imageBuffer, bunnyMesh, Eigen::Vector3f(0.3, 1, 0.3), bunnyTransform, lights, width, height);
 	drawMesh(imageBuffer, dragonMesh, Eigen::Vector3f(0.3, 1, 1), dragonTransform, lights, width, height);
 
 	// For debug - draw point lights as colored circles so we can see where they are
 	for (auto& light : lights) {
+		break;
 		if (light->getType() == Light::Type::POINT || light->getType() == Light::Type::SPOT) {
 			Eigen::Vector3f intensityNorm = light->getLightIntensity();
 			intensityNorm /= std::max(intensityNorm.x(), std::max(intensityNorm.y(), intensityNorm.z()));
