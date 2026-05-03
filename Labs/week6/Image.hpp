@@ -38,9 +38,9 @@ void drawCircle(std::vector<uint8_t>& image, int width, int height, int r, int c
 
 	int radSq = radius * radius;
 
-	for(int ir = minR; ir < maxR; ++ir)
+	for (int ir = minR; ir < maxR; ++ir)
 		for (int ic = minC; ic < maxC; ++ic) {
-			int distSq = (ic-c)*(ic-c) + (ir-r)*(ir-r);
+			int distSq = (ic - c) * (ic - c) + (ir - r) * (ir - r);
 			if (distSq <= radSq) {
 				setPixel(image, ic, ir, width, height, color);
 			}
@@ -89,4 +89,3 @@ void drawPointLights(std::vector<uint8_t>& imageBuffer, int width, int height, c
 		}
 	}
 }
-

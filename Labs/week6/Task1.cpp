@@ -28,16 +28,31 @@ struct Triangle {
 };
 
 
-Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f*M_PI/180.f, float zFar = 10.f, float zNear = 0.1f)
+Eigen::Matrix4f projectionMatrix(int height, int width, float horzFov = 70.f * M_PI / 180.f, float zFar = 10.f, float zNear = 0.1f)
 {
 	// ========= Subtask 1: Make a Projection Matrix ========
-	// *** YOUR CODE HERE ***
-
 	// Make a projection matrix following the formulation in the lecture slides, and using the provided parameters.
 	// First, work out vertical FoV based on the horizontal FoV:
-	float vertFov = 0.f;
-	// Now construct the matrix.
-	Eigen::Matrix4f projection;
+	// Note: function signature is (height, width) so compute aspect = width / height.
+	float aspect = static_cast<float>(width) / static_cast<float>(height);
+	// horizFov given. vertFov = 2 * atan( tan(horzFov/2) / aspect )
+	float vertFov = 2.0f * atanf(tanf(horzFov * 0.5f) / aspect);
+
+	// Now construct the matrix (OpenGL-style clip space: x,y,z in [-1,1] after perspective divide).
+	float f = 1.0f / tanf(vertFov * 0.5f);
+	Eigen::Matrix4f projection = Eigen::Matrix4f::Zero();
+
+	// m00 = f / aspect  ; m11 = f
+	projection(0, 0) = f / aspect;
+	projection(1, 1) = f;
+
+	// z mapping: (zFar + zNear) / (zNear - zFar), (2*zFar*zNear)/(zNear - zFar)
+	projection(2, 2) = (zFar + zNear) / (zNear - zFar);
+	projection(2, 3) = (2.0f * zFar * zNear) / (zNear - zFar);
+
+	// w = -z (so we use -1 in (3,2))
+	projection(3, 2) = -1.0f;
+
 	return projection;
 	// *** END YOUR CODE ***
 }
@@ -51,10 +66,10 @@ void findScreenBoundingBox(const Triangle& t, int width, int height, int& minX, 
 	maxY = std::max(std::max(t.screen[0].y(), t.screen[1].y()), t.screen[2].y());
 
 	// Constrain it to lie within the image.
-	minX = std::min(std::max(minX, 0), width-1);
-	maxX = std::min(std::max(maxX, 0), width-1);
-	minY = std::min(std::max(minY, 0), height-1);
-	maxY = std::min(std::max(maxY, 0), height-1);
+	minX = std::min(std::max(minX, 0), width - 1);
+	maxX = std::min(std::max(maxX, 0), width - 1);
+	minY = std::min(std::max(minY, 0), height - 1);
+	maxY = std::min(std::max(maxY, 0), height - 1);
 }
 
 
@@ -76,7 +91,7 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 		return;
 	}
 
-	for(int x = minX; x <= maxX; ++x) 
+	for (int x = minX; x <= maxX; ++x)
 		for (int y = minY; y <= maxY; ++y) {
 			Eigen::Vector2f p(x, y);
 
@@ -91,11 +106,10 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 			float b2 = a2 / triangleArea;
 
 			// If outside triangle, exit early
-			float sum = b0 + b1 + b2;
-			if (sum > 1.0001) {
+			if (b0 < -0.0001f || b1 < -0.0001f || b2 < -0.0001f) {
 				continue;
 			}
-			
+
 			Eigen::Vector3f worldP = t.verts[0] * b0 + t.verts[1] * b1 + t.verts[2] * b2;
 
 			// ========== Subtask 4: Z Buffering ==========
@@ -109,18 +123,20 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 			// First, work out the depth of this location in screen space. 
 			// We saved the clip space z values in t.screen[0].z(), t.screen[1].z() and t.screen[2].z.
 			// Use barycentric interpolation on these to work out the depth of this pixel.
-			float depth = 0.f;
+			float depth = t.screen[0].z() * b0 + t.screen[1].z() * b1 + t.screen[2].z() * b2;
 
 			// Work out where to sample in the zBuffer. Remember the zBuffer has only one channel,
 			// so your index should be based on the pixel's x and y locations, and the width of the 
 			// z buffer only.
-			int depthIdx = 0;
+			int depthIdx = y * width + x;
 
 			// If your depth is bigger than the current depth, skip drawing this pixel.
 			// Otherwise, replace the zBuffer value at depthIdx with this depth.
-			// ADD YOUR OWN CODE TO DO THIS HERE
-
-			// *** END YOUR CODE ***
+			if (depth > zBuffer[depthIdx]) {
+				continue;
+			}
+			zBuffer[depthIdx] = depth;
+			// *** END YOUR CODE ***/
 
 			Eigen::Vector3f normP = t.norms[0] * b0 + t.norms[1] * b1 + t.norms[2] * b2;
 			normP.normalize();
@@ -128,32 +144,32 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 
 
 			// ========== Subtask 5: Texture Mapping ===========
-			// Here we'll actually implement the texture mapping! Follow the steps below, implementing each
-			// stage in turn.
-			// *** YOUR CODE HERE ***
 			// Add code to calculate the texture coordinates corresponding to P, texP.
 			// Use barycentric interpolation!
-			Eigen::Vector2f texP = Eigen::Vector2f::Zero();
+			Eigen::Vector2f texP = t.texs[0] * b0 + t.texs[1] * b1 + t.texs[2] * b2;
 
 			// Convert this coordinate to a point in texture space
 			// To do so, multiply by the texWidth and texHeight to get to the correct range.
 			// Don't forget to flip the y coordinates! 
-			int texR = 0;
-			int texC = 0;
+			int texC = static_cast<int>(texP.x() * static_cast<float>(texWidth));
+			int texR = static_cast<int>((1.0f - texP.y()) * static_cast<float>(texHeight));
+
 			// Handle the case where texR or texC end up outside the image!
-			// There are different ways you could do this - for example using 
-			// the modulo (%) operator to wrap around, or clamping to the edges.
-			// Write your own code below to do this - once you're done you should be sure 
-			// that 0 <= texC < texWidth and 0 <= texR < texHeight.
+			texC = std::min(std::max(texC, 0), texWidth - 1);
+			texR = std::min(std::max(texR, 0), texHeight - 1);
 
 			// Get the value from the texture (hint: use the getPixel function on the albedoTexture).
 			Color texColor{ 255,255,255,255 };
+			if (!albedoTexture.empty()) {
+				texColor = getPixel(albedoTexture, texC, texR, texWidth, texHeight);
+			}
 
 			// Convert it into an Eigen::Vector3f as an albedo
-			// (Optional bonus task, if you checked out the slides on gamma correction:
-			// gamma correct this colour, so the texture doesn't appear overly bright.
-			// should you raise to the power 1/2.2, or 2.2?)
-			Eigen::Vector3f albedo = Eigen::Vector3f::Zero();
+			Eigen::Vector3f albedo = Eigen::Vector3f(
+				static_cast<float>(texColor.r) / 255.0f,
+				static_cast<float>(texColor.g) / 255.0f,
+				static_cast<float>(texColor.b) / 255.0f
+			);
 
 			// *** END YOUR CODE ***
 
@@ -189,9 +205,9 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 
 			Color c;
 			// Gamma-correcting colours.
-			c.r = std::min(powf(color.x(), 1/2.2f), 1.0f) * 255;
-			c.g = std::min(powf(color.y(), 1/2.2f), 1.0f) * 255;
-			c.b = std::min(powf(color.z(), 1/2.2f), 1.0f) * 255;
+			c.r = std::min(powf(color.x(), 1 / 2.2f), 1.0f) * 255;
+			c.g = std::min(powf(color.y(), 1 / 2.2f), 1.0f) * 255;
+			c.b = std::min(powf(color.z(), 1 / 2.2f), 1.0f) * 255;
 
 			c.a = 255;
 
@@ -203,10 +219,10 @@ void drawTriangle(std::vector<uint8_t>& image, int width, int height,
 
 void drawMesh(std::vector<unsigned char>& image,
 	std::vector<float>& zBuffer,
-	const Mesh& mesh, 
+	const Mesh& mesh,
 	const std::vector<uint8_t>& albedoTexture, int texWidth, int texHeight,
-	const Eigen::Matrix4f& modelToWorld, 
-	const Eigen::Matrix4f& worldToClip, 
+	const Eigen::Matrix4f& modelToWorld,
+	const Eigen::Matrix4f& worldToClip,
 	const std::vector<std::unique_ptr<Light>>& lights,
 	int width, int height)
 {
@@ -240,20 +256,46 @@ void drawMesh(std::vector<unsigned char>& image,
 
 		// Work out the clip space coordinates, by multiplying by worldToClip and doing the 
 		// perspective divide.
-		Eigen::Vector4f vClip0 = Eigen::Vector4f::Zero();
-		Eigen::Vector4f vClip1 = Eigen::Vector4f::Zero();
-		Eigen::Vector4f vClip2 = Eigen::Vector4f::Zero();
+		Eigen::Vector4f vClip0 = worldToClip * vec3ToVec4(t.verts[0]);
+		Eigen::Vector4f vClip1 = worldToClip * vec3ToVec4(t.verts[1]);
+		Eigen::Vector4f vClip2 = worldToClip * vec3ToVec4(t.verts[2]);
+
+		// Avoid divide by zero
+		if (vClip0.w() == 0.0f || vClip1.w() == 0.0f || vClip2.w() == 0.0f) {
+			continue;
+		}
+
+		Eigen::Vector4f ndc0 = vClip0 / vClip0.w();
+		Eigen::Vector4f ndc1 = vClip1 / vClip1.w();
+		Eigen::Vector4f ndc2 = vClip2 / vClip2.w();
 
 		// Check that all 3 vertices are in the clip box (-1 to 1 in x, y and z) and if not,
 		// skip drawing this triangle.
-		// Hint: I've made a function outsideClipBox in LinAlg.hpp to help with this!
+		if (outsideClipBox(ndc0) || outsideClipBox(ndc1) || outsideClipBox(ndc2)) {
+			continue;
+		}
 
 		// Work out the screen space coordinates based on the image height and width.
-		// Set the z component of each screen coordinate to be the clip-space z (for example
-		// t.screen[0].z() == vClip0.z());
-		t.screen[0] = Eigen::Vector3f::Zero();
-		t.screen[1] = Eigen::Vector3f::Zero();
-		t.screen[2] = Eigen::Vector3f::Zero();
+		// Map NDC [-1,1] to pixel coords [0,width-1] and [0,height-1] (flip Y).
+		auto ndcToScreenX = [&](float xNdc) {
+			return static_cast<float>((xNdc * 0.5f + 0.5f) * (width - 1));
+		};
+		auto ndcToScreenY = [&](float yNdc) {
+			// flip y for image coordinates
+			return static_cast<float>((1.0f - (yNdc * 0.5f + 0.5f)) * (height - 1));
+		};
+
+		t.screen[0].x() = ndcToScreenX(ndc0.x());
+		t.screen[0].y() = ndcToScreenY(ndc0.y());
+		t.screen[0].z() = ndc0.z();
+
+		t.screen[1].x() = ndcToScreenX(ndc1.x());
+		t.screen[1].y() = ndcToScreenY(ndc1.y());
+		t.screen[1].z() = ndc1.z();
+
+		t.screen[2].x() = ndcToScreenX(ndc2.x());
+		t.screen[2].y() = ndcToScreenY(ndc2.y());
+		t.screen[2].z() = ndc2.z();
 		// *** END YOUR CODE ***
 
 		// transform the normals (using the inverse transpose of the upper 3x3 block)
@@ -281,7 +323,7 @@ int main()
 	// This std::vector has one 8-bit value for each pixel in each row and column of the image, and
 	// for each of the 4 channels (red, green, blue and alpha).
 	// Remember 8-bit unsigned values can range from 0 to 255.
-	std::vector<uint8_t> imageBuffer(height*width*nChannels);
+	std::vector<uint8_t> imageBuffer(height * width * nChannels);
 	std::vector<float> zBuffer(height * width);
 
 	// This line sets the image to black initially.
@@ -302,17 +344,24 @@ int main()
 
 	// This matrix rotates the camera, tilting it down, then translates it up to make it look down on the scene.
 	// Once your code is working, try changing this to move the camera around!
-	Eigen::Matrix4f cameraToWorld = translationMatrix(Eigen::Vector3f(0.f, 0.8f, 0.f)) * rotateXMatrix(0.4f);
+	Eigen::Matrix4f cameraToWorld =
+		translationMatrix(Eigen::Vector3f(0.f, -0.5f, 0.f)) *
+		rotateYMatrix(M_PI) *
+		rotateXMatrix(0.2f);
 
 	// The main important task = set up the worldToCamera and worldToClip matrices here!
 	// Set up worldToCamera, based on cameraToWorld above
-	Eigen::Matrix4f worldToCamera;
+	Eigen::Matrix4f worldToCamera = cameraToWorld.inverse();
 	// Set up worldToClip, using the projection and worldToCamera matrices
-	Eigen::Matrix4f worldToClip;
+	Eigen::Matrix4f worldToClip = projection * worldToCamera;
 
 	// *** END YOUR CODE ***
 
 	std::string bunnyFilename = "../models/stanford_bunny_texmapped.obj";
+	if (bunnyFilename.empty()) {
+		std::cout << "ERROR: No bunny filename provided!" << std::endl;
+		return 1;
+	}
 
 	std::vector<std::unique_ptr<Light>> lights;
 	// I've already added an ambient light for you!
@@ -325,11 +374,15 @@ int main()
 	Mesh bunnyMesh = loadMeshFile(bunnyFilename);
 
 
-	Eigen::Matrix4f bunnyTransform; 
+	Eigen::Matrix4f bunnyTransform;
 
 	std::vector<uint8_t> bunnyTexture;
 	unsigned int bunnyTexWidth, bunnyTexHeight;
 	lodepng::decode(bunnyTexture, bunnyTexWidth, bunnyTexHeight, "../models/stanford_bunny_albedo.png");
+	if (bunnyTexture.empty()) {
+		std::cout << "ERROR: Failed to load bunny texture!" << std::endl;
+		return 1;
+	}
 
 	bunnyTransform = translationMatrix(Eigen::Vector3f(-1.0f, -1.0f, 3.f)) * rotateYMatrix(M_PI);
 	drawMesh(imageBuffer, zBuffer, bunnyMesh, bunnyTexture, bunnyTexWidth, bunnyTexHeight, bunnyTransform, worldToClip, lights, width, height);

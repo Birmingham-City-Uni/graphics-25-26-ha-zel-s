@@ -70,4 +70,3 @@ Mesh loadMeshFile(const std::string& filename)
 
 	return mesh;
 }
-

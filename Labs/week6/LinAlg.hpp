@@ -82,4 +82,3 @@ bool outsideClipBox(const Eigen::Vector4f& v)
 		v.y() > 1.f ||
 		v.z() > 1.f;
 }
-
