@@ -22,7 +22,7 @@
 /// <summary>
 /// Load a JSON config file using the nlohmann library.
 /// </summary>
-nlohmann::json loadConfig(const std::string& filename)
+nlohmann::json static loadConfig(const std::string& filename)
 {
 	std::ifstream configStream(filename);
 	nlohmann::json config = nlohmann::json::parse(configStream);
@@ -33,7 +33,7 @@ nlohmann::json loadConfig(const std::string& filename)
 /// Load an Eigen Vector3f from a config file.
 /// Call as for example loadVec3FromConfig(config["myVector3"]);
 /// </summary>
-Eigen::Vector3f loadVec3FromConfig(const nlohmann::json& config)
+Eigen::Vector3f static loadVec3FromConfig(const nlohmann::json& config)
 {
 	return Eigen::Vector3f(config[0], config[1], config[2]);
 }
@@ -57,6 +57,10 @@ int main(int argc, char* argv[]) {
 
 	std::vector<uint8_t> outImage(pixHeight * pixWidth * nChannels);
 
+	// camera info
+	std::cout << "Camera Pos: " << config["cameraPos"] << std::endl;
+	std::cout << "Camera Forward: " << config["cameraForward"] << std::endl;
+
 	Eigen::Vector3f
 		red(1.f, 0.f, 0.f),
 		blue(0.f, 0.f, 1.f),
@@ -68,13 +72,28 @@ int main(int argc, char* argv[]) {
 	unsigned int width, height;
 	lodepng::decode(spotTexture, width, height, "../models/spot.png");
 
+	std::vector<uint8_t> floorTexture;
+	unsigned int floorWidth, floorHeight;
+	lodepng::decode(floorTexture, floorWidth, floorHeight, "../models/TextureAtlasSol.png");
+
+	std::vector<uint8_t> pillarBottomTexture;
+	unsigned int pillarBottomWidth, pillarBottomHeight;
+	lodepng::decode(pillarBottomTexture, pillarBottomWidth, pillarBottomHeight, "../models/TextureAtlasPiedCol.png");
+
 	LambertianShader redLambertianShader(red);
 	PhongShader bluePlasticShader(blue, Eigen::Vector3f(1.f, 1.f, 1.f), 100.f);
 	LambertianShader aquaLambertianShader(aqua);
 	LambertianShader lavenderLambertianShader(lavender);
+
 	TexturedLambertianShader spotShader(&spotTexture, width, height);
+	TexturedLambertianShader floorShader(&floorTexture, floorWidth, floorHeight);
+	TexturedLambertianShader pillarBottomShader(&pillarBottomTexture, pillarBottomWidth, pillarBottomHeight);
+
 	MirrorShader mirrorShader;
 	TexCoordTestShader texCoordTestShader;
+
+	//test shader
+	LambertianShader testShader(Eigen::Vector3f(1.f, 0.f, 0.f)); // bright red
 
 	// *** Set up scene ***
 	Scene scene;
@@ -82,7 +101,19 @@ int main(int argc, char* argv[]) {
 	// Optional code: here's how to add the spot mesh to the scene, using a BVH
 	// Try enabling this and comparing it to the non-BVH version below!
 	Model spotModel("../models/spot.obj");
-	scene.renderables.push_back(std::make_shared<BVHNode>(spotModel, &spotShader, 4, rotateY(M_PI / 4.0f)));
+	Model floorModel("../models/floor.obj");
+	Model pillarBottomModel("../models/PillarBottom.obj");
+
+	//scene.renderables.push_back(std::make_shared<BVHNode>(spotModel, &spotShader, 4, rotateY(M_PI / 4.0f)));
+	scene.renderables.push_back(
+		std::make_shared<BVHNode>(
+			floorModel, &floorShader, 4, 
+			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
+
+	scene.renderables.push_back(
+		std::make_shared<BVHNode>(
+			pillarBottomModel, &pillarBottomShader, 4,
+			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
 
 	// Here's how to add the mesh without using the BVH.
 	// Try comparing performance to the BVH version above.
@@ -91,10 +122,10 @@ int main(int argc, char* argv[]) {
 	//scene.renderables.back()->modelToWorld(rotateY(M_PI / 4.0f));
 
 	// *** Add lights to scene ***
-	Eigen::Vector3f ambientLight(.1f, .1f, .1f);
+	Eigen::Vector3f ambientLight(0.8f, 0.8f, 0.8f);
 
 	std::vector<std::unique_ptr<Light>> lightSources;
-	lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(-1.f, 3.f, -1.f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f)));
+	lightSources.push_back(std::make_unique<PointLight>(Eigen::Vector3f(-1.f, 3.f, -1.f), 3.f * Eigen::Vector3f(1.f, 1.f, 1.f))); 
 	lightSources.push_back(std::make_unique<DirectionalLight>(Eigen::Vector3f(0.f, -1.f, 1.f), .5f * Eigen::Vector3f(1.f, 1.f, 1.f)));
 
 	// *** Render the scene ***
@@ -164,6 +195,10 @@ int main(int argc, char* argv[]) {
 	if (errorCode) { // check the error code, in case an error occurred.
 		std::cout << "lodepng error encoding image: " << lodepng_error_text(errorCode) << std::endl;
 		return errorCode;
+	}
+
+	if (scene.intersect(ray, 1e-6f, 1e6f, hitInfo, VISIBLE_BITMASK)) {
+		std::cerr << "HIT!\n";
 	}
 
 	return 0;

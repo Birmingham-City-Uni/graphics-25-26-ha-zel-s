@@ -50,6 +50,9 @@ Model::Model(const char *filename) : verts_(), faces_(), vts_() {
         }
     }
     std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << std::endl;
+    std::cerr << "Model loaded: " << filename << "\n";
+    std::cerr << "verts: " << verts_.size()
+        << " faces: " << faces_.size() << std::endl;
 }
 
 Model::~Model() {
