@@ -1,15 +1,19 @@
-cmake_minimum_required(VERSION 3.27.1)
+cmake_minimum_required(VERSION 3.10)
 
 project(rasteriser)
 
-add_subdirectory(3rdParty)
-
-include_directories(3rdParty/lodepng)
-
 add_executable(rasteriser
-    rasteriser.cpp)
+    rasteriser.cpp
+    Vector2.hpp
+    Vector3.hpp
+    Mesh.hpp
+    LinAlg.hpp
+    Image.hpp
+    Light.hpp
+    3rdParty/lodepng/lodepng.cpp
+)
 
-
-target_link_libraries(rasteriser 
-    lodepng
-    )
+target_include_directories(rasteriser PRIVATE
+    ${CMAKE_SOURCE_DIR}/3rdParty/lodepng
+    ${CMAKE_SOURCE_DIR}/3rdParty/eigen-3.4.1
+)

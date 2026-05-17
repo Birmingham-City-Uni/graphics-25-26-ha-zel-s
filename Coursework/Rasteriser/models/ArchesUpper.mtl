@@ -1,0 +1,17 @@
+# Blender 5.1.1 MTL File: 'Rasteriser.blend'
+# www.blender.org
+
+newmtl mur-haut
+Ks 0.500000 0.500000 0.500000
+Ni 1000.000000
+d 1.000000
+illum 2
+Pr 1.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd C:/mur-haut_diffuse.png
+map_Ke C:/mur-haut_diffuse.png

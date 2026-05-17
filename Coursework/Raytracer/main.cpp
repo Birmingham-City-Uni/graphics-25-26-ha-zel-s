@@ -80,6 +80,22 @@ int main(int argc, char* argv[]) {
 	unsigned int pillarBottomWidth, pillarBottomHeight;
 	lodepng::decode(pillarBottomTexture, pillarBottomWidth, pillarBottomHeight, "../models/TextureAtlasPiedCol.png");
 
+	std::vector<uint8_t> pillarTexture;
+	unsigned int pillarWidth, pillarHeight;
+	lodepng::decode(pillarTexture, pillarWidth, pillarHeight, "../models/TextureAtlasColInt.png");
+
+	std::vector<uint8_t> altarBaseTexture;
+	unsigned int altarBaseWidth, altarBaseHeight;
+	lodepng::decode(altarBaseTexture, altarBaseWidth, altarBaseHeight, "../models/TextureAtlasAutelSol.png");
+
+	std::vector<uint8_t> altarTableTexture;
+	unsigned int altarTableWidth, altarTableHeight;
+	lodepng::decode(altarTableTexture, altarTableWidth, altarTableHeight, "../models/TextureAtlasAutel.001.png");
+
+	std::vector<uint8_t> archesTexture;
+	unsigned int archesWidth, archesHeight;
+	lodepng::decode(archesTexture, archesWidth, archesHeight, "../models/TextureAtlasMurBasInt.png");
+
 	LambertianShader redLambertianShader(red);
 	PhongShader bluePlasticShader(blue, Eigen::Vector3f(1.f, 1.f, 1.f), 100.f);
 	LambertianShader aquaLambertianShader(aqua);
@@ -88,6 +104,10 @@ int main(int argc, char* argv[]) {
 	TexturedLambertianShader spotShader(&spotTexture, width, height);
 	TexturedLambertianShader floorShader(&floorTexture, floorWidth, floorHeight);
 	TexturedLambertianShader pillarBottomShader(&pillarBottomTexture, pillarBottomWidth, pillarBottomHeight);
+	TexturedLambertianShader pillarShader(&pillarTexture, pillarWidth, pillarHeight);
+	TexturedLambertianShader altarBaseShader(&altarBaseTexture, altarBaseWidth, altarBaseHeight);
+	TexturedLambertianShader altarTableShader(&altarTableTexture, altarTableWidth, altarTableHeight);
+	TexturedLambertianShader archesShader(&archesTexture, archesWidth, archesHeight);
 
 	MirrorShader mirrorShader;
 	TexCoordTestShader texCoordTestShader;
@@ -103,6 +123,10 @@ int main(int argc, char* argv[]) {
 	Model spotModel("../models/spot.obj");
 	Model floorModel("../models/floor.obj");
 	Model pillarBottomModel("../models/PillarBottom.obj");
+	Model pillarModel("../models/Pillars.obj");
+	Model altarBaseModel("../models/AltarBase.obj");
+	Model altarTableModel("../models/AltarTable.obj");
+	Model archesModel("../models/Arches.obj");
 
 	//scene.renderables.push_back(std::make_shared<BVHNode>(spotModel, &spotShader, 4, rotateY(M_PI / 4.0f)));
 	scene.renderables.push_back(
@@ -113,6 +137,26 @@ int main(int argc, char* argv[]) {
 	scene.renderables.push_back(
 		std::make_shared<BVHNode>(
 			pillarBottomModel, &pillarBottomShader, 4,
+			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
+
+	scene.renderables.push_back(
+		std::make_shared<BVHNode>(
+			pillarModel, &pillarShader, 4,
+			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
+
+	scene.renderables.push_back(
+		std::make_shared<BVHNode>(
+			altarBaseModel, &altarBaseShader, 4,
+			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
+
+	scene.renderables.push_back(
+		std::make_shared<BVHNode>(
+			altarTableModel, &altarTableShader, 4,
+			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
+
+	scene.renderables.push_back(
+		std::make_shared<BVHNode>(
+			archesModel, &archesShader, 4,
 			makeTranslationMatrix(Eigen::Vector3f(0.0f, -6.0f, 10.0f))));
 
 	// Here's how to add the mesh without using the BVH.
