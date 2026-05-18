@@ -596,21 +596,23 @@ int main(int argc, char* argv[])
 	);
 
 	scene.renderables.push_back(
-		std::make_shared<BVHNode>(
-			windowBasicModel,
+		std::make_shared<Mesh>(
 			&windowBasicShader,
-			4,
-			makeTranslationMatrix(sceneOffset)
-		)
+			&windowBasicModel)
+	);
+
+	scene.renderables.back()->modelToWorld(
+		makeTranslationMatrix(sceneOffset)
 	);
 
 	scene.renderables.push_back(
-		std::make_shared<BVHNode>(
-			windowUpperModel,
+		std::make_shared<Mesh>(
 			&windowUpperShader,
-			4,
-			makeTranslationMatrix(sceneOffset)
-		)
+			&windowUpperModel)
+	);
+
+	scene.renderables.back()->modelToWorld(
+		makeTranslationMatrix(sceneOffset)
 	);
 
 	scene.renderables.push_back(
