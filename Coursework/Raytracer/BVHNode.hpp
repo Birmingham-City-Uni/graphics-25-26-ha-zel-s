@@ -105,16 +105,16 @@ public:
 			}
 		}
 		else {
-			child0_ = std::make_shared<BVHNode>(model, shader, maxDepth-1, modelToWorld, &faces0, culling);
+			child0_ = std::make_shared<BVHNode>(model, shader, maxDepth - 1, modelToWorld, &faces0, culling);
 		}
-		if (faces1.size() <= 1 || maxDepth <= 0) {
-			if (faces1.size() > 0) {
+		if (!faces1.empty()) {
+			if (faces1.size() <= 1 || maxDepth <= 0) {
 				child1_ = std::make_shared<Mesh>(shader, &model, &faces1, culling);
 				child1_->modelToWorld(modelToWorld);
 			}
-		}
-		else {
-			child1_ = std::make_shared<BVHNode>(model, shader, maxDepth-1, modelToWorld, &faces1, culling);
+			else {
+				child1_ = std::make_shared<BVHNode>(model, shader, maxDepth - 1, modelToWorld, &faces1, culling);
+			}
 		}
 	}
 

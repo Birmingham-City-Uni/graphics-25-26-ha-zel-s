@@ -24,6 +24,10 @@ public:
 		int currBounceCount,
 		const int maxBounces) const
 	{
+		if (!albedoTexture_ || texWidth_ <= 0 || texHeight_ <= 0 || albedoTexture_->empty()) {
+			return Eigen::Vector3f(0.f, 0.f, 0.f);
+		}
+
 		Eigen::Vector3f albedo;
 
 		Eigen::Vector2f tex = hitInfo.texCoords;
@@ -31,8 +35,11 @@ public:
 		int pixY = static_cast<int>((1.f - tex.y()) * texHeight_);
 		pixX = std::max(pixX, 0);
 		pixY = std::max(pixY, 0);
-		pixX = std::min(pixX, texWidth_);
-		pixY = std::min(pixY, texHeight_);
+
+		int maxX = std::max(0, texWidth_ - 1);
+		int maxY = std::max(0, texHeight_ - 1);
+		pixX = std::min(pixX, maxX);
+		pixY = std::min(pixY, maxY);
 
 		albedo.x() = static_cast<float>((*albedoTexture_)[(pixX + texWidth_ * pixY) * 4 + 0]) / 255.f;
 		albedo.y() = static_cast<float>((*albedoTexture_)[(pixX + texWidth_*pixY)*4 + 1]) / 255.f;

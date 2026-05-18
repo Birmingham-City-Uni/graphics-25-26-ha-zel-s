@@ -1,0 +1,17 @@
+# Blender 5.1.1 MTL File: 'test.blend'
+# www.blender.org
+
+newmtl material_24.001
+Ks 0.500000 0.500000 0.500000
+Ni 1.200000
+d 1.000000
+illum 2
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd C:/material_24_diffuse.png
+map_Pr C:/material_24_diffuse.png
+map_Ke C:/material_24_diffuse.png
