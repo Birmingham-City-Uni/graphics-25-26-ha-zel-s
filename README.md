@@ -39,3 +39,7 @@ Your submitted coursework code should be contained in the `Coursework` directory
 * `Coursework/Pathtracer`: Blender file (.blend format) containing your path-traced scene. I recommend leaving this outside the repo until you are ready, to avoid saving multiple versions of this large binary file.
 
 I must be able to compile and run your code on the lab machines. I recommend building on the starter code and using CMake, but use of Visual Studio is acceptable (if you do, make sure you're using relative directories, i.e. `$(SolutionDir)` when setting up include directories so it will compile on other computers).
+
+References:
+Tree: https://sketchfab.com/3d-models/old-tree-5793911821d04f73926ac4ab1d46727a
+Church: https://sketchfab.com/3d-models/old-church-modeling-interior-scene-eb6cf543aa7d45e3acee49887ae3135c
