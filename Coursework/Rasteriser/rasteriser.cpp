@@ -266,7 +266,7 @@ void drawMesh(
 
 int main()
 {
-    const int width = 512, height = 512;
+    const int width = 1920, height = 1080;
     const int channels = 4;
 
     std::vector<uint8_t> image(width * height * channels);
